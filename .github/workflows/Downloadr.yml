@@ -23,27 +23,25 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
-    # [সংশোধিত ক্লাউডফ্লেয়ার ওয়ার্প ভিপিএন সেটআপ]
+    # [Terms of Service ফিক্সসহ ক্লাউডফ্লেয়ার ওয়ার্প ভিপিএন]
     - name: Install and Connect Cloudflare WARP (VPN)
       run: |
         # জিপিজিকি (GPG Key) ডাউনলোড ও সেটআপ
         curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
         
-        # সঠিক ডিরেক্টরি (sources.list.d) নিশ্চিত করে সোর্স লিস্ট যোগ করা
+        # সঠিক ডিরেক্টরি নিশ্চিত করে সোর্স লিস্ট যোগ করা
         echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-warp.list
         
         # ওয়ার্প ক্লায়েন্ট ইনস্টল করা
         sudo apt-get update && sudo apt-get install -y cloudflare-warp
         
-        # নতুন warp-cli ক্লায়েন্ট কনফিগারেশন ও রেজিস্ট্রেশন
-        warp-cli registration new
-        warp-cli mode warp
+        # নতুন সার্ভিসের নিয়ম অনুযায়ী --accept-tos ফ্ল্যাগ ব্যবহার করে রেজিস্ট্রেশন ও কানেকশন
+        warp-cli --accept-tos registration new
+        warp-cli --accept-tos mode warp
+        warp-cli --accept-tos connect
         
-        # ভিপিএন কানেক্ট করা
-        warp-cli connect
-        
-        # কানেকশন স্ট্যাবল হওয়ার জন্য একটু অপেক্ষা
-        sleep 7
+        # ভিপিএন পুরোপুরি কানেক্ট ও স্ট্যাবল হওয়ার জন্য কিছুক্ষণ অপেক্ষা
+        sleep 10
 
     # ভিপিএন ঠিকঠাক কাজ করছে কিনা তা চেক করা
     - name: Check Public IP & VPN Status
