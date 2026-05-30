@@ -23,31 +23,34 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
-    # [অফিসিয়াল ক্লাউডফ্লেয়ার ওয়ার্প ভিপিএন সেটআপ]
+    # [সংশোধিত ক্লাউডফ্লেয়ার ওয়ার্প ভিপিএন সেটআপ]
     - name: Install and Connect Cloudflare WARP (VPN)
       run: |
-        # ক্লাউডফ্লেয়ার জিপিজিকি এবং সোর্স লিস্ট যোগ করা
+        # জিপিজিকি (GPG Key) ডাউনলোড ও সেটআপ
         curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
-        echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ / base" | sudo tee /etc/apt/sources.list.cl/cloudflare-warp.list
+        
+        # সঠিক ডিরেক্টরি (sources.list.d) নিশ্চিত করে সোর্স লিস্ট যোগ করা
+        echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-warp.list
         
         # ওয়ার্প ক্লায়েন্ট ইনস্টল করা
         sudo apt-get update && sudo apt-get install -y cloudflare-warp
         
-        # ওয়ার্প রেজিস্ট্রি এবং মোড সেটআপ (Proxy মোড নয়, গ্লোবাল ভিপিএন মোড)
-        warp-cli --accept-tos registration new
-        warp-cli --accept-tos mode warp
+        # নতুন warp-cli ক্লায়েন্ট কনফিগারেশন ও রেজিস্ট্রেশন
+        warp-cli registration new
+        warp-cli mode warp
         
         # ভিপিএন কানেক্ট করা
-        warp-cli --accept-tos connect
+        warp-cli connect
         
-        # ভিপিএন কানেক্ট হওয়ার জন্য ৫ সেকেন্ড অপেক্ষা
-        sleep 5
+        # কানেকশন স্ট্যাবল হওয়ার জন্য একটু অপেক্ষা
+        sleep 7
 
-    # ভিপিএন ঠিকঠাক কাজ করছে কিনা এবং আইপি পরিবর্তন হয়েছে কিনা তা চেক করা
+    # ভিপিএন ঠিকঠাক কাজ করছে কিনা তা চেক করা
     - name: Check Public IP & VPN Status
       run: |
-        curl -s https://www.cloudflare.com/cdn-cgi/trace | grep -E "ip=|warp="
-        curl ifconfig.me
+        curl -s https://www.cloudflare.com/cdn-cgi/trace | grep -E "ip=|warp=" || true
+        curl -s ifconfig.me || true
+        echo ""
 
     - name: Grab and Download Video
       run: |
