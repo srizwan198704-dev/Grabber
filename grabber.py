@@ -1,48 +1,72 @@
 import time
-import os
 from playwright.sync_api import sync_playwright
 
 def run():
     with sync_playwright() as p:
+        # মানুষের মতো ব্রাউজার উইন্ডো সেটআপ করা
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        context = browser.new_context(
+            viewport={"width": 1280, "height": 720},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        page = context.new_page()
         
         video_url = ""
         
+        # নেটওয়ার্ক রিকোয়েস্ট মনিটর করার ফাংশন
         def handle_request(request):
             nonlocal video_url
             url = request.url
             
-            # মূল ওয়েবসাইটের পেজ ইউআরএল বাদ দিয়ে শুধু আসল মিডিয়া স্ট্রিম খোঁজা
-            if ("videoPlayPage" not in url) and (".m3u8" in url or ".mp4" in url or ".ts" in url or "master" in url or "playlist" in url):
-                if not video_url:
-                    video_url = url
-                    print(f"[+] Actual Video Stream Found: {video_url}")
+            # মিডিয়া স্ট্রিমের সম্ভাব্য কি-ওয়ার্ড ফিল্টার
+            if "videoPlayPage" not in url:
+                if any(ext in url for ext in [".m3u8", ".mp4", ".ts", "master.mpd", "playlist"]):
+                    if not video_url:
+                        video_url = url
+                        print(f"[+] Successfully Grabbed Stream URL: {video_url}")
 
         page.on("request", handle_request)
         
         target_link = "https://netfilm.world/spa/videoPlayPage/movies/drishyam-3-cam-QwhMMBvOxn8?id=7033131017150384600&type=/movie/detail&detailSe=&detailEp=&lang=en"
         print(f"Opening page: {target_link}")
         
-        # পেজ ওপেন করে ১০ সেকেন্ড অপেক্ষা করা যাতে প্লেয়ার লোড হতে পারে
-        page.goto(target_link, timeout=90000)
-        time.sleep(15) 
+        # পেজে প্রবেশ করা
+        page.goto(target_link, wait_until="domcontentloaded", timeout=90000)
+        
+        # ১. পেজ লোড হওয়ার জন্য ৫ সেকেন্ড অপেক্ষা
+        time.sleep(5)
+        
+        # ২. ভিডিও প্লেয়ার বা প্লে বাটনে ক্লিক করার চেষ্টা (অটো-প্লে ট্রিগার করতে)
+        try:
+            # সম্ভাব্য প্লে বাটন বা ভিডিও এলিমেন্ট খুঁজে ক্লিক করা
+            play_button = page.locator("video, .video-player, .play-btn, button").first
+            if play_button.is_visible():
+                play_button.click()
+                print("[*] Clicked on the video player/button to start stream...")
+        except Exception as e:
+            print(f"[*] Note: Could not click play button, trying manual wait. ({str(e)})")
+        
+        # ৩. স্ট্রিম লিংক ধরার জন্য আরও ১৫ সেকেন্ড অপেক্ষা করা
+        time.sleep(15)
+        
+        # ডিবাগিংয়ের জন্য একটি স্ক্রিনশট নেওয়া (কোনো এরর বা ক্লাউডফ্লেয়ার আসছে কিনা দেখতে)
+        page.screenshot(path="page_screenshot.png")
+        print("[*] Debug screenshot saved as page_screenshot.png")
         
         browser.close()
 
+        # লিঙ্ক হ্যান্ডলিং
         if video_url:
-            # যদি সরাসরি mp4 হয়
             if ".mp4" in video_url:
                 import urllib.request
                 print("Downloading MP4 file...")
                 urllib.request.urlretrieve(video_url, "downloaded_video.mp4")
-            # যদি m3u8 স্ট্রিম হয়, তবে শুধু লিঙ্কটি টেক্সট ফাইলে সেভ রাখা হবে যাতে ffmpeg সরাসরি ডাউনলোড করতে পারে
             else:
                 print("Saving m3u8 link for FFmpeg...")
                 with open("stream_link.txt", "w") as f:
                     f.write(video_url)
         else:
-            print("[-] No valid stream link captured.")
+            print("[-] No valid stream link captured. Website might be blocking cloud runners.")
             exit(1)
 
 if __name__ == "__main__":
