@@ -13,12 +13,12 @@ def run():
         
         video_url = ""
         
-        # নেটওয়ার্ক রিকোয়েস্ট মনিটর করার ফাংশন
+        # নেটওয়ার্ক রিকোয়েস্ট মনিটর করার ফাংশন
         def handle_request(request):
             nonlocal video_url
             url = request.url
             
-            # মিডিয়া স্ট্রিমের সম্ভাব্য কি-ওয়ার্ড ফিল্টার
+            # মিডিয়া স্ট্রিমের সম্ভাব্য কি-ওয়ার্ড ফিল্টার
             if "videoPlayPage" not in url:
                 if any(ext in url for ext in [".m3u8", ".mp4", ".ts", "master.mpd", "playlist"]):
                     if not video_url:
@@ -30,15 +30,14 @@ def run():
         target_link = "https://netfilm.world/spa/videoPlayPage/movies/drishyam-3-cam-QwhMMBvOxn8?id=7033131017150384600&type=/movie/detail&detailSe=&detailEp=&lang=en"
         print(f"Opening page: {target_link}")
         
-        # পেজে প্রবেশ করা
-        page.goto(target_link, wait_until="domcontentloaded", timeout=90000)
+        # পেজে প্রবেশ করা (ভিপিএন-এর কারণে নেটওয়ার্ক আইডল হওয়া পর্যন্ত অপেক্ষা করার জন্য 'networkidle' দেওয়া হয়েছে)
+        page.goto(target_link, wait_until="networkidle", timeout=120000)
         
-        # ১. পেজ লোড হওয়ার জন্য ৫ সেকেন্ড অপেক্ষা
+        # ১. পেজ সম্পূর্ণ রেডি হওয়ার জন্য ৫ সেকেন্ড অপেক্ষা
         time.sleep(5)
         
-        # ২. ভিডিও প্লেয়ার বা প্লে বাটনে ক্লিক করার চেষ্টা (অটো-প্লে ট্রিগার করতে)
+        # ২. ভিডিও প্লেয়ার বা প্লে বাটনে ক্লিক করার চেষ্টা (অটো-প্লে ট্রিগার করতে)
         try:
-            # সম্ভাব্য প্লে বাটন বা ভিডিও এলিমেন্ট খুঁজে ক্লিক করা
             play_button = page.locator("video, .video-player, .play-btn, button").first
             if play_button.is_visible():
                 play_button.click()
@@ -46,16 +45,16 @@ def run():
         except Exception as e:
             print(f"[*] Note: Could not click play button, trying manual wait. ({str(e)})")
         
-        # ৩. স্ট্রিম লিংক ধরার জন্য আরও ১৫ সেকেন্ড অপেক্ষা করা
+        # ৩. স্ট্রিম লিংক ব্যাকগ্রাউন্ডে ধরার জন্য আরও ১৫ সেকেন্ড অপেক্ষা করা
         time.sleep(15)
         
-        # ডিবাগিংয়ের জন্য একটি স্ক্রিনশট নেওয়া (কোনো এরর বা ক্লাউডফ্লেয়ার আসছে কিনা দেখতে)
+        # ডিবাগিংয়ের জন্য একটি স্ক্রিনশট নেওয়া (ভিপিএন কাজ করছে কিনা তা নিশ্চিত হতে)
         page.screenshot(path="page_screenshot.png")
         print("[*] Debug screenshot saved as page_screenshot.png")
         
         browser.close()
 
-        # লিঙ্ক হ্যান্ডলিং
+        # লিঙ্ক হ্যান্ডলিং এবং সংরক্ষণ
         if video_url:
             if ".mp4" in video_url:
                 import urllib.request
