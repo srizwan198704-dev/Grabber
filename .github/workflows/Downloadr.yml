@@ -23,11 +23,21 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
+    # [ফ্রি অটোমেটিক ভিপিএন] রানারের আইপি পরিবর্তন করার জন্য
+    - name: Connect to Free VPN
+      uses: amandahla/action-vpn@v3
+      with:
+        vpn_gateway: 'Japan' # সাইট ব্লক থাকলে এটি বদলে 'United States' বা 'Singapore' দিতে পারেন
+
+    # ভিপিএন সঠিকভাবে কানেক্ট হয়েছে কিনা তা আইপি দেখে নিশ্চিত হওয়ার জন্য
+    - name: Check Public IP
+      run: curl ifconfig.me
+
     - name: Grab and Download Video
       run: |
         python grabber.py
 
-    # এই স্টেপটি আগের মতোই থাকবে
+    # ভিডিও কনভার্ট করার স্টেপ
     - name: Convert Video to 3GP
       run: |
         if [ -f downloaded_video.mp4 ]; then
@@ -42,7 +52,7 @@ jobs:
           exit 1
         fi
 
-    # সাকসেস হলে ভিডিও আপলোড হবে
+    # কাজ সফল হলে ফাইল ডাউনলোড করার জন্য আর্টিফ্যাক্ট আপলোড
     - name: Upload Converted 3GP
       if: success()
       uses: actions/upload-artifact@v4
@@ -50,7 +60,7 @@ jobs:
         name: my-converted-3gp
         path: output.3gp
 
-    # [নতুন যুক্ত করা হলো] স্ক্রিপ্ট ফেইল করলেও যেন স্ক্রিনশটটি আপলোড হয়
+    # কোনো কারণে স্ক্রিপ্ট ফেইল করলে স্ক্রিনশট দেখার জন্য
     - name: Upload Debug Screenshot on Failure
       if: failure()
       uses: actions/upload-artifact@v4
