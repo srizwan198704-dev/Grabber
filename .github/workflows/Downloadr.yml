@@ -8,17 +8,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # ১. কোড চেকআউট করা
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # ২. পাইথন সেটআপ করা
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-level: '3.10'
+        python-version: '3.10'
 
-    # ৩. প্রয়োজনীয় ডিপেন্ডেন্সি এবং Playwright ব্রাউজার ইনস্টল করা
     - name: Install Dependencies
       run: |
         pip install playwright
@@ -26,24 +23,24 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
-    # ৪. পাইথন স্ক্রিপ্ট রান করে ভিডিও লিংক গ্র্যাব এবং ডাউনলোড করা
     - name: Grab and Download Video
       run: |
         python grabber.py
 
-    # ৫. ডাউনলোড হওয়া ভিডিওটি FFmpeg দিয়ে 3GP তে কনভার্ট করা
     - name: Convert Video to 3GP
       run: |
         if [ -f downloaded_video.mp4 ]; then
+          echo "Converting downloaded MP4..."
           ffmpeg -i downloaded_video.mp4 -r 20 -s 352x288 -vb 400k -acodec aac -strict experimental -ac 1 -ar 8000 -ab 24k output.3gp
-        elif [ -f stream.m3u8 ]; then
-          ffmpeg -i stream.m3u8 -r 20 -s 352x288 -vb 400k -acodec aac -strict experimental -ac 1 -ar 8000 -ab 24k output.3gp
+        elif [ -f stream_link.txt ]; then
+          echo "Streaming and converting from m3u8 URL..."
+          M3U8_URL=$(cat stream_link.txt)
+          ffmpeg -i "$M3U8_URL" -r 20 -s 352x288 -vb 400k -acodec aac -strict experimental -ac 1 -ar 8000 -ab 24k output.3gp
         else
-          echo "No video file found to convert!"
+          echo "Error: No video resource found!"
           exit 1
         fi
 
-    # ৬. কনভার্ট হওয়া 3GP ফাইলটি Artifact হিসেবে আপলোড করা (ডাউনলোড লিংক)
     - name: Upload Converted 3GP
       uses: actions/upload-artifact@v4
       with:
