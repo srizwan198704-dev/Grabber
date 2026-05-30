@@ -1,53 +1,49 @@
 import time
+import os
 from playwright.sync_api import sync_playwright
 
 def run():
     with sync_playwright() as p:
-        # হেডলেস ব্রাউজার চালু করা
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         
         video_url = ""
         
-        # নেটওয়ার্ক রিকোয়েস্ট ট্র্যাক করার ফাংশন (1DM+ এর মতো)
         def handle_request(request):
             nonlocal video_url
             url = request.url
-            # ভিডিওর সম্ভাব্য এক্সটেনশন বা স্ট্রিম লিংক ফিল্টার করা
-            if ".m3u8" in url or ".mp4" in url or "video" in url:
-                if not video_url: # প্রথম যে ভিডিও লিংকটি পাওয়া যাবে
+            
+            # মূল ওয়েবসাইটের পেজ ইউআরএল বাদ দিয়ে শুধু আসল মিডিয়া স্ট্রিম খোঁজা
+            if ("videoPlayPage" not in url) and (".m3u8" in url or ".mp4" in url or ".ts" in url or "master" in url or "playlist" in url):
+                if not video_url:
                     video_url = url
-                    print(f"[+] Found Video Stream Link: {video_url}")
+                    print(f"[+] Actual Video Stream Found: {video_url}")
 
-        # নেটওয়ার্ক রিকোয়েস্ট মনিটর করা শুরু
         page.on("request", handle_request)
         
-        # আপনার দেওয়া কাঙ্ক্ষিত লিংকটি ওপেন করা
         target_link = "https://netfilm.world/spa/videoPlayPage/movies/drishyam-3-cam-QwhMMBvOxn8?id=7033131017150384600&type=/movie/detail&detailSe=&detailEp=&lang=en"
         print(f"Opening page: {target_link}")
-        page.goto(target_link, timeout=60000)
         
-        # পেজ লোড হওয়া এবং ভিডিও প্লেয়ার চালু হওয়ার জন্য কিছু সময় অপেক্ষা করা
+        # পেজ ওপেন করে ১০ সেকেন্ড অপেক্ষা করা যাতে প্লেয়ার লোড হতে পারে
+        page.goto(target_link, timeout=90000)
         time.sleep(15) 
         
         browser.close()
 
-        # লিংক পাওয়া গেলে সেটি ডাউনলোড করার জন্য সেভ করা
         if video_url:
-            with open("video_source.txt", "w") as f:
-                f.write(video_url)
-            
-            # সরাসরি ফাইল হলে ডাউনলোড করা, নতুবা m3u8 হলে পরবর্তীতে ffmpeg সামলে নেবে
-            import urllib.request
+            # যদি সরাসরি mp4 হয়
             if ".mp4" in video_url:
+                import urllib.request
                 print("Downloading MP4 file...")
                 urllib.request.urlretrieve(video_url, "downloaded_video.mp4")
+            # যদি m3u8 স্ট্রিম হয়, তবে শুধু লিঙ্কটি টেক্সট ফাইলে সেভ রাখা হবে যাতে ffmpeg সরাসরি ডাউনলোড করতে পারে
             else:
-                # m3u8 লিংক হলে একটি লোকাল প্লেলিস্ট ফাইল তৈরি করা
-                with open("stream.m3u8", "w") as f:
+                print("Saving m3u8 link for FFmpeg...")
+                with open("stream_link.txt", "w") as f:
                     f.write(video_url)
         else:
-            print("[-] Could not grab any video link. The player might be protected or requires interaction.")
+            print("[-] No valid stream link captured.")
+            exit(1)
 
 if __name__ == "__main__":
     run()
